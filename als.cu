@@ -300,7 +300,6 @@ void als::solve(
 
    #pragma omp barrier
    
-   
    /// serialize_matrix(std::cout, &in_v[0], in_v_size, _count_features);
    
    ///
@@ -780,8 +779,6 @@ void als::mulYxY(
                  int features_local_offset
                )
 {
-
-
   features_vector_device device_YxY;
   device_YxY.assign(_count_features * _count_features, 0);
   float alpha = 1;
@@ -826,39 +823,14 @@ void als::mulYxY(
        thrust::copy(in_v.begin()+ offset,  in_v.begin()+ offset + actual_part_size, x_device.begin() + i * actual_part_size) ;
     }
     
-    //int f1 = _count_features / 2;
-    //int f2 = _count_features - f1;
-
-
-   /* status = cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, _count_features, _count_features, actual_part_size , &alpha,
-                             thrust::raw_pointer_cast(&x_device[0]), actual_part_size , thrust::raw_pointer_cast(&x_device[0]),
-                             actual_part_size, &beta, thrust::raw_pointer_cast(&device_YxY[0]), _count_features);
-*/
-
     status = cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, _count_features_local, _count_features, actual_part_size , &alpha,
                              thrust::raw_pointer_cast(&x_device[0]) + features_local_offset * actual_part_size, actual_part_size , thrust::raw_pointer_cast(&x_device[0]),
                              actual_part_size, &beta, thrust::raw_pointer_cast(&device_YxY[0]) + features_local_offset, _count_features);
-
-
-
-/*
-    status = cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, f1, _count_features, actual_part_size , &alpha,
-                         thrust::raw_pointer_cast(&x_device[0]), actual_part_size , thrust::raw_pointer_cast(&x_device[0]),
-                         actual_part_size, &beta, thrust::raw_pointer_cast(&device_YxY[0]), _count_features);
-
-
-    status = cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, f2, _count_features, actual_part_size , &alpha,
-                             thrust::raw_pointer_cast(&x_device[0]) + f1 * actual_part_size, actual_part_size , thrust::raw_pointer_cast(&x_device[0]),
-                             actual_part_size, &beta, thrust::raw_pointer_cast(&device_YxY[0]) + f1, _count_features);*/
-
 
     if ( cudaSuccess != cudaGetLastError() )
             std::cerr <<  "!WARN - Cuda error (als::mulYxY -> cublasSgemm) : "  << cudaGetLastError() << std::endl;                         
   }
   
-  
-  //thrust::copy(device_YxY.begin() + features_local_offset * _count_features, device_YxY.begin() + (features_local_offset + _count_features_local) * _count_features,
-		  //YxY.begin() + features_local_offset * _count_features);
 
   for(int i = 0; i < _count_features; i++)
   {
