@@ -98,8 +98,8 @@ protected:
     /// solve one iteration of als
     ///
     void solve(
-                const likes_vector& likes,
-                const likes_weights_vector& weights,
+                const likes_vector::const_iterator& likes,
+                const likes_weights_vector::const_iterator& weights,
                 const features_vector& in_v,
                 int _count_users,
                 features_vector& out_v,
@@ -114,8 +114,8 @@ protected:
     /// Solve one part of iteration
     ///           
     void solve_part(
-                    const likes_vector& likes,
-                    const likes_weights_vector& weights,
+                    const likes_vector::const_iterator& likes,
+                    const likes_weights_vector::const_iterator& weights,
                     const features_vector& in_v,
                     int in_size,
                     cublasHandle_t& handle, cublasStatus_t& status,

@@ -172,9 +172,9 @@ void als::calculate_one_gpu(int count_iterations)
 		std::cerr << "ALS Iteration: " << i << std::endl;
 
 		std::cerr << "Items." << std::endl;
-		solve(_item_likes, _item_likes_weights, _features_users, _count_users, _features_items, _count_items, _count_items, _count_features );
+		solve(_item_likes.begin(), _item_likes_weights.begin(), _features_users, _count_users, _features_items, _count_items, _count_items, _count_features );
 		std::cerr << "Users." << std::endl;
-		solve(_user_likes, _user_likes_weights, _features_items, _count_items, _features_users, _count_users, _count_users, _count_features );
+		solve(_user_likes.begin(), _user_likes_weights.begin(), _features_items, _count_items, _features_users, _count_users, _count_users, _count_features );
 
 		time_t end =  time(0);
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
@@ -214,7 +214,7 @@ void als::calculate_multiple_gpus(int count_iterations)
 		users_offsets[i] = users_offsets[i - 1] + _count_users_parts[i - 1];
 	}
 
-	std::vector<likes_vector> _item_likes_parts(count_gpus);
+	/*std::vector<likes_vector> _item_likes_parts(count_gpus);
 	std::vector<likes_vector> _user_likes_parts(count_gpus);
 	std::vector<likes_weights_vector> _item_likes_weights_parts(count_gpus);
 	std::vector<likes_weights_vector> _user_likes_weights_parts(count_gpus);
@@ -231,7 +231,7 @@ void als::calculate_multiple_gpus(int count_iterations)
 	_user_likes.clear();
 	_item_likes_weights.clear();
 	_user_likes_weights.clear();
-
+*/
 	omp_set_num_threads(count_gpus);
 
 	for(int i =0; i < count_iterations; i++)
@@ -248,7 +248,7 @@ void als::calculate_multiple_gpus(int count_iterations)
 			cudaGetDevice(&gpu_id);
 			std::cerr << "Items. Thread: " << thread_id << " GPU: " << gpu_id << std::endl;
 
-			solve(_item_likes_parts[thread_id], _item_likes_weights_parts[thread_id], _features_users, _count_users, _features_items,
+			solve(_item_likes.begin() + items_offsets[thread_id], _item_likes_weights.begin() + items_offsets[thread_id], _features_users, _count_users, _features_items,
 			   _count_items_parts[thread_id], _count_items, _count_features_parts[thread_id], features_offsets[thread_id], items_offsets[thread_id]);
 		}
 
@@ -261,7 +261,7 @@ void als::calculate_multiple_gpus(int count_iterations)
 			cudaGetDevice(&gpu_id);
 			std::cerr << "Users. Thread: " << thread_id << " GPU: " << gpu_id << std::endl;
 
-			solve(_user_likes_parts[thread_id], _user_likes_weights_parts[thread_id], _features_items, _count_items, _features_users,
+			solve(_user_likes.begin() + users_offsets[thread_id], _user_likes_weights.begin() + users_offsets[thread_id], _features_items, _count_items, _features_users,
 				   _count_users_parts[thread_id], _count_users, _count_features_parts[thread_id], features_offsets[thread_id], users_offsets[thread_id]);
 		}
 
@@ -275,8 +275,8 @@ void als::calculate_multiple_gpus(int count_iterations)
 
 
 void als::solve(
-                const likes_vector& likes,
-                const likes_weights_vector& weights,
+                const likes_vector::const_iterator& likes,
+                const likes_weights_vector::const_iterator& weights,
                 const features_vector& in_v,
                 int in_v_size,
                 features_vector& out_v,
@@ -850,8 +850,8 @@ void als::mulYxY(
 #define MEM_FOR_Y_MATRIX 0x40000000
 
 void als::solve_part(
-                      const likes_vector& likes,
-                      const likes_weights_vector& weights,
+                      const likes_vector::const_iterator& likes,
+                      const likes_weights_vector::const_iterator& weights,
                       const features_vector& in_v,
                       int in_size,
                       cublasHandle_t& handle,
@@ -890,8 +890,8 @@ void als::solve_part(
        long len=0;
        for(int i=0; i< it_count_matrix; i++)
        {
-         l_size += likes[m_part * count_matrix + i].size();
-         len += likes[m_part * count_matrix + i].size();
+         l_size += (*(likes + m_part * count_matrix + i)).size();
+         len += (*(likes + m_part * count_matrix + i)).size();
        }
        
        
@@ -954,9 +954,9 @@ void als::solve_part(
        for(int i=0; i< it_count_matrix; i++)
        {
           c_likes_list_offset.push_back(c_likes_list.size());
-          c_likes_list.insert(c_likes_list.end(), likes[m_part * count_matrix + i].begin(), likes[m_part * count_matrix + i].end());
-          c_likes_weights_list.insert(c_likes_weights_list.end(), weights[m_part * count_matrix + i].begin(), weights[m_part * count_matrix + i].end());
-          c_likes_list_count.push_back(likes[m_part * count_matrix + i].size());
+          c_likes_list.insert(c_likes_list.end(), (*(likes + m_part * count_matrix + i)).begin(), (*(likes + m_part * count_matrix + i)).end());
+          c_likes_weights_list.insert(c_likes_weights_list.end(), (*(weights + m_part * count_matrix + i)).begin(), (*(weights + m_part * count_matrix + i)).end());
+          c_likes_list_count.push_back((*(likes + m_part * count_matrix + i)).size());
        }
        
        thrust::device_vector<int> matrix_C_likes_device(  c_likes_list );
