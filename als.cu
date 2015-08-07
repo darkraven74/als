@@ -135,16 +135,6 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
     std::cerr << " u: " << _count_users << " i: " << _count_items << std::endl;
 }
 
-template <typename T>
-void move_vector_part(std::vector<std::vector<T> >& src, std::vector<std::vector<T> >& dst, int size)
-{
-	for (int i = 0; i < size; i++)
-	{
-		dst.push_back(src[i]);
-	}
-	src.erase(src.begin(), src.begin() + size);
-}
-
 void als::calculate(int count_iterations)
 {
    fill_rnd(_features_users, _count_users);
@@ -214,24 +204,6 @@ void als::calculate_multiple_gpus(int count_iterations)
 		users_offsets[i] = users_offsets[i - 1] + _count_users_parts[i - 1];
 	}
 
-	/*std::vector<likes_vector> _item_likes_parts(count_gpus);
-	std::vector<likes_vector> _user_likes_parts(count_gpus);
-	std::vector<likes_weights_vector> _item_likes_weights_parts(count_gpus);
-	std::vector<likes_weights_vector> _user_likes_weights_parts(count_gpus);
-
-	for (int i = 0; i < count_gpus; i++)
-	{
-		move_vector_part(_item_likes, _item_likes_parts[i], _count_items_parts[i]);
-		move_vector_part(_user_likes, _user_likes_parts[i], _count_users_parts[i]);
-		move_vector_part(_item_likes_weights, _item_likes_weights_parts[i], _count_items_parts[i]);
-		move_vector_part(_user_likes_weights, _user_likes_weights_parts[i], _count_users_parts[i]);
-	}
-
-	_item_likes.clear();
-	_user_likes.clear();
-	_item_likes_weights.clear();
-	_user_likes_weights.clear();
-*/
 	omp_set_num_threads(count_gpus);
 
 	for(int i =0; i < count_iterations; i++)
