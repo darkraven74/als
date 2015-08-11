@@ -355,8 +355,8 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
      {
          for( int i=0;  i < _count_error_samples_for_users; i++)
          {         
-             //const int r1 = rand() % _count_users;
-        	 const int r1 = i;
+             const int r1 = rand() % _count_users;
+//        	 const int r1 = i;
              users_for_error.push_back(r1);
          }
      }
@@ -374,8 +374,8 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
      {
          for( int i=0;  i < _count_error_samples_for_items; i++)
          {         
-             //const int r1 = rand() % _count_items;
-        	 const int r1 = i;
+             const int r1 = rand() % _count_items;
+//        	 const int r1 = i;
              items_for_error.push_back(r1);
          }
      }
