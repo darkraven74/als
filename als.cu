@@ -347,7 +347,7 @@ void als::fill_rnd(
     curandDestroyGenerator(gen);    
 }
 
-void als::draw_samples_for_error(features_vector& users, features_vector& items)
+void als::draw_samples_for_error(features_vector& users, features_vector& items, std::vector<float>& r)
 {
      srand (time(NULL));
      users.assign(_count_error_samples_for_users * _count_features,0);
@@ -355,7 +355,8 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items)
      {
          for( int i=0;  i < _count_error_samples_for_users; i++)
          {         
-             const int r1 = rand() % _count_users;
+             //const int r1 = rand() % _count_users;
+        	 const int r1 = i;
              users_for_error.push_back(r1);
          }
      }
@@ -373,7 +374,8 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items)
      {
          for( int i=0;  i < _count_error_samples_for_items; i++)
          {         
-             const int r1 = rand() % _count_items;
+             //const int r1 = rand() % _count_items;
+        	 const int r1 = i;
              items_for_error.push_back(r1);
          }
      }
@@ -383,6 +385,23 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items)
          const int r1 = items_for_error[i];
          for( int c=0; c < _count_features; c++)
             items[CM_IDX(i, c, _count_error_samples_for_items)] = _features_items[CM_IDX(r1, c, _count_items)];
+     }
+
+     for (int i = 0; i < _count_error_samples_for_users; i++)
+     {
+    	 for (int j = 0; j < _count_error_samples_for_items; j++)
+    	 {
+    		 int user_id = users_for_error[i];
+    		 int item_id = items_for_error[j];
+
+    		 for (int k = 0; k < _user_likes[user_id].size(); k++)
+    		 {
+    			 if (_user_likes[user_id][k] == item_id)
+    			 {
+    				 r[i * _count_error_samples_for_items + j] = 1;
+    			 }
+    		 }
+    	 }
      }
 }
 
@@ -1446,7 +1465,8 @@ void als::calc_error()
     return;    
   }
   
-  draw_samples_for_error(users, items);
+  std::vector<float> r(_count_error_samples_for_items * _count_error_samples_for_users, 0);
+  draw_samples_for_error(users, items, r);
   
   int final_matrix_size = _count_error_samples_for_users * _count_error_samples_for_items;
   thrust::device_vector<float> x_device(final_matrix_size, 0);
@@ -1475,7 +1495,8 @@ void als::calc_error()
   thrust::copy(x_device.begin(), x_device.end(), mat.begin());
   for(int i=0; i < _count_error_samples_for_users * _count_error_samples_for_items; i++)                       
   {
-        error += (1 - mat[i]) *  ( 1 - mat[i] );        
+        error += (r[i] - mat[i]) *  ( r[i] - mat[i] );
+//        error += (1 - mat[i]) *  ( 1 - mat[i] );
   }
     
     std::cerr << "ERROR SUM: " << error << std::endl;

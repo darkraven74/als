@@ -147,7 +147,7 @@ protected:
    ///               
    /// Draw samples to calculate iteration error (MSE)
    ///
-   void draw_samples_for_error(features_vector& users, features_vector& items);
+   void draw_samples_for_error(features_vector& users, features_vector& items, std::vector<float>& r);
    
    ///
    /// Calculate als (Matrix Factorization) with one GPU
