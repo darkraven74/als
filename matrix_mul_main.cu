@@ -55,7 +55,7 @@ int main(int argc, char *argv[] )
 	int block_size = 5000;
 	int n = 100;
     int csimples = 0;
-    int cit = 10;
+    int cit = 20;
     bool is_als=false;
     int samples_for_calc_error_users=0;
     int samples_for_calc_error_items=0;
@@ -341,7 +341,7 @@ int main(int argc, char *argv[] )
        als_alg.calculate(cit);
        cudaDeviceSynchronize();
        gettimeofday(&t2, NULL);
-       std::cerr << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
+       std::cout << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
 
        omp_set_num_threads(4);
 	   #pragma omp parallel

@@ -356,7 +356,7 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
          for( int i=0;  i < _count_error_samples_for_users; i++)
          {         
              const int r1 = rand() % _count_users;
-//        	 const int r1 = i;
+//           const int r1 = i;
              users_for_error.push_back(r1);
          }
      }
@@ -375,7 +375,7 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
          for( int i=0;  i < _count_error_samples_for_items; i++)
          {         
              const int r1 = rand() % _count_items;
-//        	 const int r1 = i;
+//           const int r1 = i;
              items_for_error.push_back(r1);
          }
      }
@@ -398,7 +398,7 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
     		 {
     			 if (_user_likes[user_id][k] == item_id)
     			 {
-    				 r[i * _count_error_samples_for_items + j] = 1;
+                                 r[j * _count_error_samples_for_users + i] = 1;
     			 }
     		 }
     	 }
@@ -906,7 +906,7 @@ void als::solve_part(
       std::cerr << "Likes block is too large: " << large_part << max_len << std::endl;
       long mem_for_likes = (0.5 * prop.totalGlobalMem - (count_matrix * bytes_YxY_matrix_size) );
       int real_allowed_matrix = mem_for_likes / (max_len * 8 );
-      std::cerr << "Real alowed matrix: " << real_allowed_matrix << " vs " << count_matrix 
+      std::cerr << "Real alowed matrix: " << real_allowed_matrix << " vs " << count_matrix
                 << " used mem: " << real_allowed_matrix * max_len * 8 << " mem_for_likes: " << mem_for_likes << std::endl;
       if( real_allowed_matrix < count_matrix) count_matrix = real_allowed_matrix;
       ///
@@ -1044,10 +1044,10 @@ void als::solve_part(
         
         std::time_t t2 = time(0);
        
-        std::cerr << " calculated. time: " << t2 - t1 << std::endl;                              
+        std::cerr << " calculated. time: " << t2 - t1 << std::endl;
         
         if ( cudaSuccess != cudaGetLastError() )
-            std::cerr <<  "!WARN - Cuda error (als::solve_part -> matMulYTxC_IxYGpu) : "  << cudaGetLastError() << std::endl;                                                   
+            std::cerr <<  "!WARN - Cuda error (als::solve_part -> matMulYTxC_IxYGpu) : "  << cudaGetLastError() << std::endl;
                               
        }
 
@@ -1147,7 +1147,7 @@ void als::solve_part(
          cudaDeviceSynchronize();
          
          if ( cudaSuccess != cudaGetLastError() )
-            std::cerr <<  "!WARN - Cuda error (als::solve_part -> matMulYTxCxpGpuShared) : "  << cudaGetLastError() << std::endl;                                                   
+            std::cerr <<  "!WARN - Cuda error (als::solve_part -> matMulYTxCxpGpuShared) : "  << cudaGetLastError() << std::endl;
            
        }
        
@@ -1503,7 +1503,9 @@ void als::calc_error()
     
     error = error / (float)(_count_error_samples_for_users * _count_error_samples_for_items);
     
-    std::cerr << "MSE: " << error << std::endl;
+//    std::cout << "MSE: " << error << std::endl;
+    std::cout << error << std::endl;
+
     
     error = sqrtf(error / (float)(_count_error_samples_for_users * _count_error_samples_for_items) );
     
