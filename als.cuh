@@ -83,6 +83,8 @@ public:
     void serialize_items_map(std::ostream& out);
     
     void calc_error();
+    virtual void hit_rate();
+
 protected:
 
     ///
@@ -163,6 +165,8 @@ protected:
    ///
    virtual void calculate_multiple_gpus(int count_iterations);
 
+   void generate_test_set();
+
 
 private :    
     ///
@@ -215,6 +219,8 @@ private :
     int _count_error_samples_for_items;
     std::vector<int>   items_for_error;
     
+    std::vector<std::pair<int, int> > test_set;
+
     
     cudaDeviceProp prop;
     

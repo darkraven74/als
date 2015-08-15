@@ -7,6 +7,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
 #include <cublas_v2.h>
+#include <set>
 #include <ctime>
 #include <omp.h>
 #include <iostream>
@@ -52,12 +53,15 @@ als::als( std::istream& tuples_stream,
      std::cerr << "maxThreadsPerMultiProcessor: " << prop.maxThreadsPerMultiProcessor << std::endl;
    } 
    
+   srand(time(NULL));
 
    read_likes(tuples_stream, count_samples, likes_format);
 
    _features_users.assign(_count_users * _count_features, 0 );
    _features_items.assign(_count_items * _count_features, 0 );
    YxY.assign(_count_features * _count_features, 0);
+
+   generate_test_set();
 
 }
  
@@ -91,7 +95,7 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         
         if( format == 0 )
         {
-          getline(line_stream, value, tab_delim);
+//          getline(line_stream, value, tab_delim);
           unsigned long gid = atol(value.c_str());
         }
         
@@ -135,6 +139,21 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
     std::cerr << " u: " << _count_users << " i: " << _count_items << std::endl;
 }
 
+void als::generate_test_set()
+{
+	for (int i = 0; i < _count_users; i++)
+	{
+		int size = _user_likes[i].size() / 3;
+		for (int j = 0; j < 10; j++)
+		{
+			int id = rand() % _user_likes[i].size();
+			test_set.push_back(std::make_pair(i, _user_likes[i][id]));
+			_user_likes[i].erase(_user_likes[i].begin() + id);
+			_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
+		}
+	}
+}
+
 void als::calculate(int count_iterations)
 {
    fill_rnd(_features_users, _count_users);
@@ -169,7 +188,8 @@ void als::calculate_one_gpu(int count_iterations)
 		time_t end =  time(0);
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
-		calc_error();
+		hit_rate();
+		//calc_error();
 	}
 }
 
@@ -241,7 +261,8 @@ void als::calculate_multiple_gpus(int count_iterations)
 
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
-		calc_error();
+		hit_rate();
+		//calc_error();
 	}
 }
 
@@ -387,7 +408,7 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
             items[CM_IDX(i, c, _count_error_samples_for_items)] = _features_items[CM_IDX(r1, c, _count_items)];
      }
 
-     for (int i = 0; i < _count_error_samples_for_users; i++)
+     /*for (int i = 0; i < _count_error_samples_for_users; i++)
      {
     	 for (int j = 0; j < _count_error_samples_for_items; j++)
     	 {
@@ -402,7 +423,27 @@ void als::draw_samples_for_error(features_vector& users, features_vector& items,
     			 }
     		 }
     	 }
-     }
+     }*/
+     
+	/*for (unsigned int i = 0; i < test_set.size(); i++)
+	{
+		int user = test_set[i].first;
+		int item = test_set[i].second;
+
+		if (item < _count_error_samples_for_items)
+			r[item * _count_error_samples_for_users + user] = 1;
+	}*/
+
+    for (int i = 0; i < _count_error_samples_for_users; i++)
+    {
+        for (unsigned int k = 0; k < _user_likes[i].size(); k++)
+        {
+                if (_user_likes[i][k] < _count_error_samples_for_items)
+                        r[_user_likes[i][k] * _count_error_samples_for_users + i] = 1;
+        }
+    }
+     
+     
 }
 
 #define BLOCK_SIZE 8
@@ -1493,17 +1534,23 @@ void als::calc_error()
   std::vector<float> mat(final_matrix_size, 0);
   float error = 0;
   thrust::copy(x_device.begin(), x_device.end(), mat.begin());
+  float size = 0;
   for(int i=0; i < _count_error_samples_for_users * _count_error_samples_for_items; i++)                       
   {
-      if (r[i] == 1)
-        error += (r[i] - mat[i]) *  ( r[i] - mat[i] );
-//        error += (1 - mat[i]) *  ( 1 - mat[i] );
+		if (r[i] == 1)
+		{
+			size++;
+			error += (r[i] - mat[i]) *  ( r[i] - mat[i] );
+			//        error += (1 - mat[i]) *  ( 1 - mat[i] );
+		}
   }
     
     std::cerr << "ERROR SUM: " << error << std::endl;
     
-    error = error / (float)(_count_error_samples_for_users * _count_error_samples_for_items);
-    
+//    error = error / (float)(_count_error_samples_for_users * _count_error_samples_for_items);
+
+    error = error / size;
+
 //    std::cout << "MSE: " << error << std::endl;
     std::cout << error << std::endl;
 
@@ -1511,4 +1558,106 @@ void als::calc_error()
     error = sqrtf(error / (float)(_count_error_samples_for_users * _count_error_samples_for_items) );
     
     std::cerr << "RMSE: " << error << std::endl;
+}
+
+void als::hit_rate()
+{
+	als::features_vector users;
+	als::features_vector items;
+
+	if(_count_error_samples_for_users == 0 || _count_error_samples_for_items == 0)
+	{
+		return;
+	}
+
+	std::vector<float> r(_count_error_samples_for_items * _count_error_samples_for_users, 0);
+	draw_samples_for_error(users, items, r);
+
+	int final_matrix_size = _count_error_samples_for_users * _count_error_samples_for_items;
+	thrust::device_vector<float> x_device(final_matrix_size, 0);
+	thrust::device_vector<float> users_device(users);
+	thrust::device_vector<float> items_device(items);
+
+	float alpha = 1;
+	float beta = 0;
+
+
+	///matMulYxYGpuShared<<<grid, block>>>( thrust::raw_pointer_cast(&x_device[0]),
+	///                                     thrust::raw_pointer_cast(&device_YxY[0]),
+	///                                     _count_features,
+	///                                     in_size);
+
+	cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, _count_error_samples_for_users, _count_error_samples_for_items, _count_features, &alpha,
+					   thrust::raw_pointer_cast(&users_device[0]), _count_error_samples_for_users , thrust::raw_pointer_cast(&items_device[0]),
+					   _count_error_samples_for_items, &beta, thrust::raw_pointer_cast(&x_device[0]), _count_error_samples_for_users);
+
+	cudaDeviceSynchronize();
+	if ( cudaSuccess != cudaGetLastError() )
+			std::cerr <<  "!WARN - calc_error - cuda error: "  << cudaGetLastError() << std::endl;
+
+	std::vector<float> mat(final_matrix_size, 0);
+	thrust::copy(x_device.begin(), x_device.end(), mat.begin());
+
+	for (int i = 0; i < _count_users; i++)
+	{
+		for (unsigned int j = 0; j < _user_likes[i].size(); j++)
+		{
+			int item_id = _user_likes[i][j];
+			mat[item_id * _count_users + i] = 0;
+		}
+	}
+
+	std::set<std::pair<int, int> > recs;
+	for (int i = 0; i < _count_users; i++)
+	{
+		std::vector<float> v;
+		for (int j = 0; j < _count_items; j++)
+		{
+			v.push_back(mat[j * _count_users + i]);
+		}
+
+		for (int j = 0; j < 10; j++)
+		{
+			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
+			int item = std::distance(v.begin(), it);
+			v[item] = 0;
+			recs.insert(std::make_pair(i, item));
+		}
+	}
+
+	float sum = 0;
+	std::set<int> test_u;
+
+	for (int u = 0; u < _count_users; u++)
+	{
+
+		float tp = 0;
+		float size = 0;
+
+		for (unsigned int i = 0; i < test_set.size(); i++)
+		{
+			int user = test_set[i].first;
+			int item = test_set[i].second;
+
+			test_u.insert(user);
+			if (user == u)
+			{
+				size++;
+			}
+
+			if (user == u && recs.count(std::make_pair(user, item)))
+			{
+				tp++;
+			}
+		}
+
+		if (size != 0)
+			sum += tp / size;
+
+	}
+
+	float res = sum * 1.0 / test_u.size();
+//	float res = tp * 1.0 / test_set.size();
+
+	std::cout << res << std::endl;
 }
