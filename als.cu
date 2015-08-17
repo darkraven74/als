@@ -89,6 +89,7 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
             _count_users ++;
             _user_likes.push_back(std::vector<int>() );
             _user_likes_weights.push_back(std::vector<float>() );
+            _user_likes_weights_temp.push_back(std::vector<float>());
         }
         
         int user = _users_map[uid];
@@ -103,10 +104,12 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         unsigned long iid = atol(value.c_str());
         float weight=1;
         
+        float weight_temp = 1;
+
         if( format ==1 )
         {
            getline(line_stream, value, tab_delim);  
-           weight = atof( value.c_str() );
+           weight_temp = atof( value.c_str() );
         }
         
         if ( _items_map.find(iid)  == _items_map.end() )
@@ -124,6 +127,7 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         ///
         _user_likes[user].push_back( item );        
         _user_likes_weights[user].push_back( weight );
+    	_user_likes_weights_temp[user].push_back( weight_temp );
         _item_likes[item].push_back( user );
         _item_likes_weights[item].push_back( weight );
         
@@ -143,13 +147,18 @@ void als::generate_test_set()
 {
 	for (int i = 0; i < _count_users; i++)
 	{
-		int size = _user_likes[i].size() / 3;
-		for (int j = 0; j < 10; j++)
+		int size = _user_likes[i].size();
+		for (int j = 0; j < size;)
 		{
 			int id = rand() % _user_likes[i].size();
+			if (_user_likes_weights_temp[i][id] < 4)
+			{
+				continue;
+			}
 			test_set.push_back(std::make_pair(i, _user_likes[i][id]));
 			_user_likes[i].erase(_user_likes[i].begin() + id);
 			_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
+			break;
 		}
 	}
 }
@@ -1603,10 +1612,13 @@ void als::hit_rate()
 		for (unsigned int j = 0; j < _user_likes[i].size(); j++)
 		{
 			int item_id = _user_likes[i][j];
-			mat[item_id * _count_users + i] = 0;
+			mat[item_id * _count_users + i] = -1000000;
 		}
 	}
 
+//	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+
+	float sum = 0;
 	std::set<std::pair<int, int> > recs;
 	for (int i = 0; i < _count_users; i++)
 	{
@@ -1620,15 +1632,24 @@ void als::hit_rate()
 		{
 			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
 			int item = std::distance(v.begin(), it);
-			v[item] = 0;
+			v[item] = -1000000;
 			recs.insert(std::make_pair(i, item));
+			/*if (test_set_set.count(std::make_pair(i, item)))
+			{
+				sum += 1.0 / (j + 1);
+				break;
+			}*/
 		}
 	}
 
-	float sum = 0;
+
+//	float mrr = sum / _count_users;
+
+
+//	float sum = 0;
 	std::set<int> test_u;
 
-	for (int u = 0; u < _count_users; u++)
+	/*for (int u = 0; u < _count_users; u++)
 	{
 
 		float tp = 0;
@@ -1654,10 +1675,35 @@ void als::hit_rate()
 		if (size != 0)
 			sum += tp / size;
 
+	}*/
+
+	//hit-rate10 calc
+	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+	float tp = 0;
+	for (std::set<std::pair<int, int> >::iterator it = test_set_set.begin(); it != test_set_set.end(); it++)
+	{
+		if (recs.count(*it))
+		{
+			tp++;
+		}
 	}
+	float hr10 = tp * 1.0 / test_set_set.size();
+
+	//prec calc
+	/*std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+	float tp = 0;
+	for (std::set<std::pair<int, int> >::iterator it = recs.begin(); it != recs.end(); it++)
+	{
+		if (test_set_set.count(*it))
+		{
+			tp++;
+		}
+	}
+	float p = tp * 1.0 / recs.size();
 
 	float res = sum * 1.0 / test_u.size();
+	*/
 //	float res = tp * 1.0 / test_set.size();
 
-	std::cout << res << std::endl;
+	std::cout << hr10 << std::endl;
 }

@@ -220,6 +220,7 @@ private :
     std::vector<int>   items_for_error;
     
     std::vector<std::pair<int, int> > test_set;
+    likes_weights_vector         _user_likes_weights_temp;
 
     
     cudaDeviceProp prop;
