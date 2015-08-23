@@ -328,8 +328,7 @@ int main(int argc, char *argv[] )
        std::cerr << " ALS alfa -  " << als_alfa << std::endl;
        std::cerr << " ALS count gpus -  " << count_gpus << std::endl;
 
-       
-       als als_alg(in, features_size, als_alfa, 0.01, csimples, samples_for_calc_error_users, samples_for_calc_error_items, likes_format, count_gpus);
+       als als_alg(in, features_size, als_alfa, 40, csimples, samples_for_calc_error_users, samples_for_calc_error_items, likes_format, count_gpus);
        
        ///
        struct timeval t1;
@@ -342,6 +341,7 @@ int main(int argc, char *argv[] )
        cudaDeviceSynchronize();
        gettimeofday(&t2, NULL);
        std::cout << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
+
 
        omp_set_num_threads(4);
 	   #pragma omp parallel
@@ -372,6 +372,7 @@ int main(int argc, char *argv[] )
     	       fout_imap.close();
 		   }
        }
+
 
 
     }else if(replace_hashes)

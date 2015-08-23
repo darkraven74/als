@@ -61,7 +61,7 @@ als::als( std::istream& tuples_stream,
    _features_items.assign(_count_items * _count_features, 0 );
    YxY.assign(_count_features * _count_features, 0);
 
-   generate_test_set();
+//   generate_test_set();
 
 }
  
@@ -148,12 +148,12 @@ void als::generate_test_set()
 	for (int i = 0; i < _count_users; i++)
 	{
 		int size = _user_likes[i].size();
-		for (int j = 0; j < size / 2; j++)
+		for (int j = 0; j < size / 2;)
 		{
 			int id = rand() % _user_likes[i].size();
 			if (_user_likes_weights_temp[i][id] < 4)
 			{
-//				continue;
+				continue;
 			}
 			test_set.push_back(std::make_pair(i, _user_likes[i][id]));
 
@@ -171,7 +171,7 @@ void als::generate_test_set()
 			_user_likes[i].erase(_user_likes[i].begin() + id);
 			_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
 			_user_likes_weights_temp[i].erase(_user_likes_weights_temp[i].begin() + id);
-//			break;
+			break;
 		}
 	}
 }
@@ -210,7 +210,7 @@ void als::calculate_one_gpu(int count_iterations)
 		time_t end =  time(0);
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
-		hit_rate();
+//		hit_rate();
 		//calc_error();
 	}
 }
@@ -283,7 +283,7 @@ void als::calculate_multiple_gpus(int count_iterations)
 
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
-		hit_rate();
+//		hit_rate();
 		//calc_error();
 	}
 }
@@ -1641,7 +1641,7 @@ void als::hit_rate()
 			v.push_back(mat[j * _count_users + i]);
 		}
 
-		for (int j = 0; j < 5; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
 			int item = std::distance(v.begin(), it);
@@ -1691,7 +1691,7 @@ void als::hit_rate()
 	}*/
 
 	//hit-rate10 calc
-	/*std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
 	float tp = 0;
 	for (std::set<std::pair<int, int> >::iterator it = test_set_set.begin(); it != test_set_set.end(); it++)
 	{
@@ -1701,9 +1701,9 @@ void als::hit_rate()
 		}
 	}
 	float hr10 = tp * 1.0 / test_set_set.size();
-*/
+
 	//prec calc
-	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+	/*std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
 	float tp = 0;
 	for (std::set<std::pair<int, int> >::iterator it = recs.begin(); it != recs.end(); it++)
 	{
@@ -1713,10 +1713,10 @@ void als::hit_rate()
 		}
 	}
 	float p = tp * 1.0 / recs.size();
-
+*/
 //	float res = sum * 1.0 / test_u.size();
 
 //	float res = tp * 1.0 / test_set.size();
 
-	std::cout << p << std::endl;
+	std::cout << hr10 << std::endl;
 }
