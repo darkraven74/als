@@ -84,6 +84,7 @@ public:
     
     void calc_error();
     virtual void hit_rate();
+    virtual float hit_rate_cpu();
 
 protected:
 
@@ -166,6 +167,7 @@ protected:
    virtual void calculate_multiple_gpus(int count_iterations);
 
    void generate_test_set();
+   
 
 
 private :    

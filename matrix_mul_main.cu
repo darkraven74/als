@@ -55,7 +55,7 @@ int main(int argc, char *argv[] )
 	int block_size = 5000;
 	int n = 100;
     int csimples = 0;
-    int cit = 20;
+    int cit = 10;
     bool is_als=false;
     int samples_for_calc_error_users=0;
     int samples_for_calc_error_items=0;
@@ -328,7 +328,8 @@ int main(int argc, char *argv[] )
        std::cerr << " ALS alfa -  " << als_alfa << std::endl;
        std::cerr << " ALS count gpus -  " << count_gpus << std::endl;
 
-       als als_alg(in, features_size, als_alfa, 40, csimples, samples_for_calc_error_users, samples_for_calc_error_items, likes_format, count_gpus);
+       //30
+       als als_alg(in, features_size, als_alfa, 30, csimples, samples_for_calc_error_users, samples_for_calc_error_items, likes_format, count_gpus);
        
        ///
        struct timeval t1;
@@ -344,7 +345,7 @@ int main(int argc, char *argv[] )
 
 
        omp_set_num_threads(4);
-	   #pragma omp parallel
+#pragma omp parallel
        {
     	   int thread_id = omp_get_thread_num();
     	   if (thread_id == 0)

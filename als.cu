@@ -53,6 +53,7 @@ als::als( std::istream& tuples_stream,
      std::cerr << "maxThreadsPerMultiProcessor: " << prop.maxThreadsPerMultiProcessor << std::endl;
    } 
    
+   //srand(34);
    srand(time(NULL));
 
    read_likes(tuples_stream, count_samples, likes_format);
@@ -61,7 +62,7 @@ als::als( std::istream& tuples_stream,
    _features_items.assign(_count_items * _count_features, 0 );
    YxY.assign(_count_features * _count_features, 0);
 
-//   generate_test_set();
+   generate_test_set();
 
 }
  
@@ -96,7 +97,7 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         
         if( format == 0 )
         {
-//          getline(line_stream, value, tab_delim);
+          //getline(line_stream, value, tab_delim);
           unsigned long gid = atol(value.c_str());
         }
         
@@ -131,7 +132,7 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         _item_likes[item].push_back( user );
         _item_likes_weights[item].push_back( weight );
         
-        if (i % 10000 == 0 ) std::cerr << i << " u: " << _count_users << " i: " << _count_items << "\r";
+        if (i % 10000 == 0 ) std::cout << i << " u: " << _count_users << " i: " << _count_items << "\r";
         
         ///std::cout << "u:" << user << " -> " << item << std::endl; 
         ///std::cout << "i:" << item << " -> " << user << std::endl; 
@@ -139,22 +140,23 @@ void als::read_likes(  std::istream& tuples_stream, int count_simples, int forma
         i++;
         if( count_simples && i > count_simples) break;
     }
-    
-    std::cerr << " u: " << _count_users << " i: " << _count_items << std::endl;
+    std::cout.flush();
+    std::cout << " total u: " << _count_users << " i: " << _count_items << std::endl;
 }
 
 void als::generate_test_set()
 {
-	for (int i = 0; i < _count_users; i++)
+	for (int idx = 0; idx < 10000; idx++)
 	{
+		int i = rand() % _count_users;
 		int size = _user_likes[i].size();
 		for (int j = 0; j < size / 2;)
 		{
 			int id = rand() % _user_likes[i].size();
-			if (_user_likes_weights_temp[i][id] < 4)
+			/*if (_user_likes_weights_temp[i][id] < 4)
 			{
 				continue;
-			}
+			}*/
 			test_set.push_back(std::make_pair(i, _user_likes[i][id]));
 
 
@@ -208,9 +210,10 @@ void als::calculate_one_gpu(int count_iterations)
 		solve(_user_likes.begin(), _user_likes_weights.begin(), _features_items, _count_items, _features_users, _count_users, _count_users, _count_features );
 
 		time_t end =  time(0);
-		std::cerr << "==== Iteration time : " << end - start << std::endl;
+		std::cout << "==== Iteration time : " << end - start << std::endl;
 
-//		hit_rate();
+		hit_rate_cpu();
+		//hit_rate();
 		//calc_error();
 	}
 }
@@ -281,9 +284,10 @@ void als::calculate_multiple_gpus(int count_iterations)
 
 		time_t end =  time(0);
 
-		std::cerr << "==== Iteration time : " << end - start << std::endl;
+		std::cout << "==== Iteration time : " << end - start << std::endl;
 
-//		hit_rate();
+		hit_rate_cpu();
+		//hit_rate();
 		//calc_error();
 	}
 }
@@ -1582,6 +1586,52 @@ void als::calc_error()
     std::cerr << "RMSE: " << error << std::endl;
 }
 
+float als::hit_rate_cpu()
+{
+	float tp = 0;
+	for (int i = 0; i < test_set.size(); i++)
+	{
+		int user = test_set[i].first;
+		int item = test_set[i].second;
+		std::vector<float> predict(_count_items);
+		#pragma omp parallel for num_threads(24)
+		for (int j = 0; j < _count_items; j++)
+		{
+			float sum = 0;
+			for (int k = 0; k < _count_features; k++)
+			{
+				sum += _features_users[k * _count_users + user]
+					* _features_items[k * _count_items + j];
+			}
+			predict[j] = sum;
+		}
+
+		for (unsigned int j = 0; j < _user_likes[user].size(); j++)
+		{
+			int item_id = _user_likes[user][j];
+			predict[item_id] = -1000000;
+		}
+
+		for (int j = 0; j < 10; j++)
+		{
+			std::vector<float>::iterator it = std::max_element(predict.begin(), predict.end());
+			int top_item = std::distance(predict.begin(), it);
+			predict[top_item] = -1000000;
+			if (top_item == item)
+			{
+				tp++;
+				break;
+			}
+		}
+	}
+
+	float hr10 = tp * 1.0 / test_set.size();
+
+	std::cout << hr10 << std::endl;
+
+	return hr10;
+}
+
 void als::hit_rate()
 {
 	als::features_vector users;
@@ -1631,7 +1681,7 @@ void als::hit_rate()
 
 //	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
 
-	float sum = 0;
+//	float sum = 0;
 	std::set<std::pair<int, int> > recs;
 	for (int i = 0; i < _count_users; i++)
 	{
@@ -1656,7 +1706,7 @@ void als::hit_rate()
 	}
 
 
-	float mrr = sum / _count_users;
+//	float mrr = sum / _count_users;
 
 
 //	float sum = 0;
